@@ -6,16 +6,9 @@ from flask import Flask, request
 
 BOT_TOKEN = os.getenv("BOT_TOKEN", "").strip()
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "").strip()
-PORT = int(os.getenv("PORT", 10000))
-
-WEBHOOK_URL = "https://health-coach-bot-jmif.onrender.com"
 
 bot = telebot.TeleBot(BOT_TOKEN)
-web = Flask(__name__)
-
-@web.route("/")
-def home():
-    return "AI Health Coach Bot is running."
+app = Flask(__name__)
 
 def make_menu():
     markup = types.InlineKeyboardMarkup()
@@ -33,7 +26,7 @@ def make_menu():
 
 def ask_gemini(user_text):
     if not GEMINI_API_KEY:
-        return "Gemini API key missing in Render Environment Variables."
+        return "Gemini API key missing."
 
     url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={GEMINI_API_KEY}"
 
@@ -52,25 +45,20 @@ User question: {user_text}
 
     payload = {
         "contents": [
-            {
-                "parts": [
-                    {"text": prompt}
-                ]
-            }
+            {"parts": [{"text": prompt}]}
         ]
     }
 
     try:
         r = requests.post(url, json=payload, timeout=30)
-
         if r.status_code != 200:
-            return f"Gemini API error {r.status_code}: {r.text[:300]}"
+            return f"Gemini API error {r.status_code}: {r.text[:250]}"
 
         data = r.json()
         return data["candidates"][0]["content"]["parts"][0]["text"][:4000]
 
     except Exception as e:
-        return f"Error: {str(e)[:300]}"
+        return f"Error: {str(e)[:250]}"
 
 @bot.message_handler(commands=["start"])
 def start(message):
@@ -92,15 +80,18 @@ def chat(message):
     answer = ask_gemini(message.text)
     bot.reply_to(message, answer)
 
-@web.route("/webhook", methods=["POST"])
+@app.route("/", methods=["GET"])
+def home():
+    return "AI Health Coach Bot is running."
+
+@app.route("/webhook", methods=["GET", "POST"])
 def webhook():
+    if request.method == "GET":
+        return "Webhook route is active."
+
     update = telebot.types.Update.de_json(request.get_data().decode("utf-8"))
     bot.process_new_updates([update])
-    return "OK", 200
+    return "OK"
 
 if __name__ == "__main__":
-    bot.remove_webhook()
-    bot.set_webhook(url=f"{WEBHOOK_URL}/webhook")
-
-    print("Webhook set to /webhook", flush=True)
-    web.run(host="0.0.0.0", port=PORT)
+    app.run(host="0.0.0.0", port=10000)
