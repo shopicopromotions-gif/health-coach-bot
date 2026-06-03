@@ -8,19 +8,14 @@ BOT_TOKEN = os.getenv("BOT_TOKEN", "").strip()
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "").strip()
 PORT = int(os.getenv("PORT", 10000))
 
-WEBHOOK_URL = os.getenv(
-    "WEBHOOK_URL",
-    "https://health-coach-bot-jmif.onrender.com"
-).strip().rstrip("/")
+WEBHOOK_URL = "https://health-coach-bot-jmif.onrender.com"
 
 bot = telebot.TeleBot(BOT_TOKEN)
 web = Flask(__name__)
 
-
 @web.route("/")
 def home():
     return "AI Health Coach Bot is running."
-
 
 def make_menu():
     markup = types.InlineKeyboardMarkup()
@@ -32,14 +27,9 @@ def make_menu():
         types.InlineKeyboardButton("🏃 Exercise", callback_data="Exercise"),
         types.InlineKeyboardButton("💧 Hydration", callback_data="Hydration")
     )
-    markup.row(
-        types.InlineKeyboardButton("🧠 Mental Wellness", callback_data="Mental Wellness")
-    )
-    markup.row(
-        types.InlineKeyboardButton("❓ Ask Any Health Question", callback_data="Ask")
-    )
+    markup.row(types.InlineKeyboardButton("🧠 Mental Wellness", callback_data="Mental Wellness"))
+    markup.row(types.InlineKeyboardButton("❓ Ask Any Health Question", callback_data="Ask"))
     return markup
-
 
 def ask_gemini(user_text):
     if not GEMINI_API_KEY:
@@ -82,7 +72,6 @@ User question: {user_text}
     except Exception as e:
         return f"Error: {str(e)[:300]}"
 
-
 @bot.message_handler(commands=["start"])
 def start(message):
     bot.send_message(
@@ -93,31 +82,25 @@ def start(message):
         reply_markup=make_menu()
     )
 
-
 @bot.callback_query_handler(func=lambda call: True)
 def callback(call):
     bot.answer_callback_query(call.id)
     bot.send_message(call.message.chat.id, f"Ask me anything about {call.data}.")
-
 
 @bot.message_handler(func=lambda message: True)
 def chat(message):
     answer = ask_gemini(message.text)
     bot.reply_to(message, answer)
 
-
-@web.route(f"/{BOT_TOKEN}", methods=["POST"])
+@web.route("/webhook", methods=["POST"])
 def webhook():
     update = telebot.types.Update.de_json(request.get_data().decode("utf-8"))
     bot.process_new_updates([update])
     return "OK", 200
 
-
 if __name__ == "__main__":
     bot.remove_webhook()
-    bot.set_webhook(url=f"{WEBHOOK_URL}/{BOT_TOKEN}")
+    bot.set_webhook(url=f"{WEBHOOK_URL}/webhook")
 
-    print("Webhook set successfully", flush=True)
-    print(f"Bot running on {WEBHOOK_URL}", flush=True)
-
+    print("Webhook set to /webhook", flush=True)
     web.run(host="0.0.0.0", port=PORT)
