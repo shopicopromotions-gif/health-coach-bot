@@ -46,7 +46,7 @@ def ask_gemini(user_text):
     if not GEMINI_API_KEY:
         return "Gemini API key missing in Render Environment Variables."
 
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={GEMINI_API_KEY}"
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={GEMINI_API_KEY}"
 
     prompt = f"""
 You are a friendly AI Health Coach.
@@ -55,6 +55,7 @@ Rules:
 - Give general health and wellness knowledge only.
 - Do not diagnose disease.
 - Do not prescribe medicine or dosage.
+- Do not give emergency treatment instructions.
 - Keep answers short, simple, practical, and safe.
 - If symptoms seem serious, tell the user to contact a qualified doctor.
 
@@ -63,7 +64,11 @@ User question: {user_text}
 
     payload = {
         "contents": [
-            {"parts": [{"text": prompt}]}
+            {
+                "parts": [
+                    {"text": prompt}
+                ]
+            }
         ]
     }
 
